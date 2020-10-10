@@ -18,9 +18,9 @@ instatiating entity if needed.
 
 ## Compilation
 
-Compile with VHDL-2008 support:
+Example for Model/Questasim:
 ```
-vcom -2008 pkg/sparsemem_pkg.vhd
+vcom pkg/sparsemem_pkg.vhd
 ```
 
 ## Usage
