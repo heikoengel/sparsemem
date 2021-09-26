@@ -26,12 +26,15 @@
 -- Date: 2020-07-25
 --
 --====================================================================--
+package sparsemem_32x32 is
+  new work.sparsemem_pkg generic map(G_ADDR_WIDTH => 32, G_DATA_WIDTH => 32);
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.sparsemem_pkg.all;
+use work.sparsemem_32x32.all;
 
 entity tb_sparsemem is
 
@@ -39,7 +42,7 @@ end entity tb_sparsemem;
 
 architecture sim of tb_sparsemem is
 
-  constant slv_uninit : std_logic_vector(C_SPARSEMEM_DATA_WIDTH-1 downto 0) :=
+  constant slv_uninit : std_logic_vector(31 downto 0) :=
     std_logic_vector(C_SPARSEMEM_UNINITIZALIED);
   shared variable mem : SparseMem;
 

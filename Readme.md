@@ -2,17 +2,23 @@
 
 SparseMem is a resource-friendly VHDL model for large memory simulations.
 
-With the default config, the model implements a 64 bit address range
-with 32 bit storage elements:
+The package is parametrized with generic and needs to be defined when
+used, e.g.:
 
-* Address range: (63 downto 0)
-* Data width   : (31 downto 0)
+```vhdl
+  package my_sparsemem is new work.sparsemem_pkg
+    generic map(
+        G_ADDR_WIDTH => 32,
+        G_DATA_WIDTH => 32);
 
-Different address and data width settings can be set by changing the
-corresponding constants in the package.
+-- [...]
+
+  variable mem : work.my_sparsemem.SparseMem;
+  -- [...]
+```
 
 Note that each address holds one data word of the configured width.
-With the default config, there's a 32 bit word stored at each
+With the above example config, there's a 32 bit word stored at each
 address. Byte- or Word-addressing has to be implemented in the
 instatiating entity if needed.
 
@@ -25,7 +31,9 @@ vcom pkg/sparsemem_pkg.vhd
 
 ## Usage
 
-Embed `sparsemem_pkg.vhd` into your own design. An example is shown in `rtl/simple_ram.vhd`.
+Use `sparsemem_pkg.vhd` in your own design and create a `new` package
+with the address/data widths needed. An example is shown in
+`models/simple_ram.vhd`.
 
 
 ## Simulation

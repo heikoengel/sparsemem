@@ -2,7 +2,7 @@
 --! @file sparsemem_pkg.vhd
 --====================================================================--
 --
--- Copyright (C) 2020 Heiko Engel
+-- Copyright (C) 2021 Heiko Engel
 --
 -- This source file may be used and distributed without restriction provided
 -- that this copyright statement is not removed from the file and that any
@@ -23,7 +23,7 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 --
 --
--- Date: 2020-07-25
+-- Date: 2021-09-10
 --
 --====================================================================--
 
@@ -32,31 +32,20 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 package sparsemem_pkg is
+  generic (
+    G_ADDR_WIDTH : natural;             -- Memory address width
+    G_DATA_WIDTH : natural);            -- Memory data width
   -----------------------------------------------------------------------------
   --! # SparseMem
   --! SparseMem is a resource-friendly VHDL model for large memory
   --! simulations.
   --!
-  --! With the default config, the model implements a 64 bit address
-  --! range with 32 bit storage elements:
-  --!
-  --! * Address range: (63 downto 0)
-  --! * Data width   : (31 downto 0)
-  --!
-  --! Different address and data width settings can be set by changing
-  --! the corresponding constants in the package.
+  --! Address and data width are configurable with package generics.
   --!
   --! Note that each address holds one data word of the configured
-  --! width. With the default config, there's a 32 bit word stored at
-  --! each address. Byte- or Word-addressing has to be implemented in
-  --! the instatiating entity if needed.
+  --! width. A finer-grained Byte- or Word-addressing has to be
+  --! implemented in the instatiating entity if needed.
   -----------------------------------------------------------------------------
-
-  --! @brief Address width: default 64 bit
-  constant C_SPARSEMEM_ADDR_WIDTH : natural := 64;  -- Address width
-
-  --! @brief Data width: default 32 bit
-  constant C_SPARSEMEM_DATA_WIDTH : natural := 32;  -- Data width
 
   --! @brief protected SparseMem type with read/write access
   --! functions/procedures.
@@ -65,8 +54,8 @@ package sparsemem_pkg is
     ---------------------------------------------------------------------------
     --! @brief Get the memory content at [addr].
     --! @param addr memory address as unsigned value
-    --! @return memory content at [addr] as 32 bit signed value or
-    --! x"XXXX_XXXX" when [addr] is not initialized.
+    --! @return memory content at [addr] as unsigned value or
+    --! C_SPARSEMEM_UNINITIZALIED when [addr] is not initialized.
     ---------------------------------------------------------------------------
     impure function get (
       addr : unsigned)
@@ -74,8 +63,8 @@ package sparsemem_pkg is
 
     ---------------------------------------------------------------------------
     --! @brief Set the memory content at [addr] to [data].
-    --! @param addr memory address as (64 bit) unsigned value
-    --! @param data data to be written as (32 bit) unsigned
+    --! @param addr memory address as unsigned value
+    --! @param data data to be written as unsigned value
     ---------------------------------------------------------------------------
     procedure set (
       addr : in unsigned;
@@ -90,11 +79,11 @@ package sparsemem_pkg is
     --! @brief Get the memory content at [addr].
     --! @param addr memory address as (32 bit) signed integer
     --! @return memory content at [addr] as 32 bit unsigned or
-    --! x"XXXX_XXXX" when [addr] is not initialized.
+    --! C_SPARSEMEM_UNINITIZALIED when [addr] is not initialized.
     --!
     --! Note that integer data types can only cover 32 bit signed
-    --! values. This overload cannot be used for addresses values >
-    --! 2**31.
+    --! values. This overload cannot be used for address offsets
+    --! greater than 2**31.
     ---------------------------------------------------------------------------
     impure function get (
       addr : integer)
@@ -103,11 +92,12 @@ package sparsemem_pkg is
     ---------------------------------------------------------------------------
     --! @brief Set the memory content at [addr] to [data].
     --! @param addr memory address as (32 bit) signed integer
-    --! @param data data to be written as (32 bit) signed integer
+    --! @param data data to be written as (32 bit) signed integer. Negative
+    --! values will set the memory address to the 32 bit two's complement.
     --!
     --! Note that integer data types can only cover 32 bit signed
-    --! values. This overload cannot be used for addresses and data
-    --! values > 2**31.
+    --! values. This overload cannot be used for address and data
+    --! values greater than 2**31.
     ---------------------------------------------------------------------------
     procedure set (
       addr : integer;
@@ -115,9 +105,9 @@ package sparsemem_pkg is
 
     ---------------------------------------------------------------------------
     --! @brief Get the memory content at [addr].
-    --! @param addr memory address as 64 bit std_logic_vector
-    --! @return memory content at [addr] as 32 bit std_logic_vector or
-    --! x"XXXX_XXXX" when [addr] is not initialized.
+    --! @param addr memory address as std_logic_vector
+    --! @return memory content at [addr] as std_logic_vector or
+    --! C_SPARSEMEM_UNINITIZALIED when [addr] is not initialized.
     ---------------------------------------------------------------------------
     impure function get (
       addr : std_logic_vector)
@@ -125,8 +115,8 @@ package sparsemem_pkg is
 
     ---------------------------------------------------------------------------
     --! @brief Set the memory content at [addr] to [data].
-    --! @param addr memory address as 64 bit std_logic_vector value
-    --! @param data data to be written as 32 bit std_logic_vector
+    --! @param addr memory address as std_logic_vector value
+    --! @param data data to be written as std_logic_vector
     ---------------------------------------------------------------------------
     procedure set (
       addr : std_logic_vector;
@@ -134,7 +124,8 @@ package sparsemem_pkg is
 
   end protected;
 
-  constant C_SPARSEMEM_UNINITIZALIED : unsigned(C_SPARSEMEM_DATA_WIDTH-1 downto 0) := (others => 'X');
+  --! @brief value to return for reads to uninitialized memory locations
+  constant C_SPARSEMEM_UNINITIZALIED : unsigned(G_DATA_WIDTH-1 downto 0) := (others => 'X');
 
 end package sparsemem_pkg;
 
@@ -148,16 +139,16 @@ package body sparsemem_pkg is
   -- Each list entry consists of an address, the data value and a
   -- pointer to the next list entry.
   type MemEntry is record
-    data      : unsigned(C_SPARSEMEM_DATA_WIDTH-1 downto 0);
-    addr      : unsigned(C_SPARSEMEM_ADDR_WIDTH-1 downto 0);
+    data      : unsigned(G_DATA_WIDTH-1 downto 0);
+    addr      : unsigned(G_ADDR_WIDTH-1 downto 0);
     nextEntry : MemPtr;
   end record MemEntry;
 
   variable root : MemPtr := null;
 
   -----------------------------------------------------------------------------
-  -- Return the memory content at [addr] or x"XXXX_XXXX" when [addr]
-  -- is not yet initialized.
+  -- Return the memory content at [addr] or C_SPARSEMEM_UNINITIZALIED
+  -- when [addr] is not yet initialized.
   -----------------------------------------------------------------------------
   impure function get (
     addr : unsigned)
@@ -263,15 +254,14 @@ package body sparsemem_pkg is
     addr : integer)
     return unsigned is
   begin
-    return get(to_unsigned(addr, C_SPARSEMEM_ADDR_WIDTH));
+    return get(to_unsigned(addr, G_ADDR_WIDTH));
   end function get;
 
   procedure set (
     addr : integer;
     data : integer) is
   begin
-    set(to_unsigned(addr, C_SPARSEMEM_ADDR_WIDTH),
-        to_unsigned(data, C_SPARSEMEM_DATA_WIDTH));
+    set(to_unsigned(addr, G_ADDR_WIDTH), to_unsigned(data, G_DATA_WIDTH));
   end procedure set;
 
   -------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 -- simple_ram.vhd
 --====================================================================--
 --
--- Copyright (C) 2020 Heiko Engel
+-- Copyright (C) 2021 Heiko Engel
 --
 -- This source file may be used and distributed without restriction provided
 -- that this copyright statement is not removed from the file and that any
@@ -23,7 +23,7 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 --
 --
--- Date: 2020-07-25
+-- Date: 2021-09-26
 --
 --====================================================================--
 
@@ -31,17 +31,15 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library work;
-use work.sparsemem_pkg.all;
-
 entity simple_ram is
 
   generic (
-    G_ADDR_WITH : natural range 2 to 64 := 30);    -- address width
+    G_RESET_POL  : std_logic             := '1';   -- Reset polarity
+    G_ADDR_WIDTH : natural range 2 to 64 := 30);   -- address width
   port (
     I_CLK   : in  std_logic;            -- clock
     I_ARST  : in  std_logic;            -- async reset
-    I_ADDR  : in  std_logic_vector(G_ADDR_WITH-1 downto 0);  -- address input
+    I_ADDR  : in  std_logic_vector(G_ADDR_WIDTH-1 downto 0);  -- address input
     I_WDATA : in  std_logic_vector(31 downto 0);   -- write data input
     I_WE    : in  std_logic;            -- write-enable
     I_RE    : in  std_logic;            -- read-enable
@@ -51,14 +49,17 @@ end entity simple_ram;
 
 architecture sim of simple_ram is
 
+  package sparsemem_32x32 is
+      new work.sparsemem_pkg generic map(G_ADDR_WIDTH => G_ADDR_WIDTH, G_DATA_WIDTH => 32);
+
 begin  -- architecture sim
 
   MEM_INTF_P : process (I_CLK, I_ARST) is
-    variable mem : SparseMem;
+    variable mem : sparsemem_32x32.SparseMem;
   begin  -- process MEM_INTF_P
-    if I_ARST = '1' then
+    if I_ARST = G_RESET_POL then
       O_RDATA <= (others => '0');
-    elsif rising_edge(I_CLK) then          -- rising clock edge
+    elsif rising_edge(I_CLK) then       -- rising clock edge
       if I_RE = '1' then
         O_RDATA <= std_logic_vector(mem.get(unsigned(I_ADDR)));
       end if;
